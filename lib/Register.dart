@@ -43,7 +43,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() async {
     if (_formKey.currentState!.validate()) {
-      final username = _emailController.text;
+      final email = _emailController.text;
       final password = _passwordController.text;
 
       try {
@@ -51,7 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           Uri.parse('http://127.0.0.1:8080/api/auth/register'),
           headers: {'Content-Type': 'application/json; charset=UTF-8'},
           body: jsonEncode({
-            'username': username,
+            'username': email,
             'password': password,
             'roles': ['USER']
           }),
