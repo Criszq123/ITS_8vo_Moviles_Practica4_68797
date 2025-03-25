@@ -26,7 +26,8 @@ class ApiService {
   }
 
   // Crear una nueva tarea
-  static Future<Map<String, dynamic>> createTask(Map<String, dynamic> task) async {
+  static Future<Map<String, dynamic>> createTask(
+      Map<String, dynamic> task) async {
     final response = await http.post(
       Uri.parse('$_apiUrl/tareas'),
       headers: {'Content-Type': 'application/json'},
@@ -40,7 +41,8 @@ class ApiService {
   }
 
   // Actualizar una tarea
-  static Future<Map<String, dynamic>> updateTask(int id, Map<String, dynamic> task) async {
+  static Future<Map<String, dynamic>> updateTask(int id,
+      Map<String, dynamic> task) async {
     final response = await http.put(
       Uri.parse('$_apiUrl/tareas/$id'),
       headers: {'Content-Type': 'application/json'},
@@ -54,7 +56,8 @@ class ApiService {
   }
 
   // Marcar una tarea como completada
-  static Future<Map<String, dynamic>> toggleTaskCompletion(int id, bool completed) async {
+  static Future<Map<String, dynamic>> toggleTaskCompletion(int id,
+      bool completed) async {
     final response = await http.patch(
       Uri.parse('$_apiUrl/tareas/$id'),
       headers: {'Content-Type': 'application/json'},
@@ -74,6 +77,4 @@ class ApiService {
       throw Exception('Error al eliminar la tarea');
     }
   }
-
-  static void setToken(String s) {}
 }

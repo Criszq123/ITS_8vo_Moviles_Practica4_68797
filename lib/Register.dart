@@ -19,20 +19,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
   }
 
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Por favor, introduce tu correo electrónico';
+    }
+    // Expresión regular para validar un correo electrónico
+    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+    if (!emailRegex.hasMatch(value)) {
+      return 'Introduce un correo válido';
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Por favor, introduce tu contraseña';
+    }
+    if (value.length < 8) {
+      return 'La contraseña debe tener al menos 8 caracteres';
+    }
+    return null;
+  }
+
   void _register() async {
     if (_formKey.currentState!.validate()) {
-      final email = _emailController.text;
+      final username = _emailController.text;
       final password = _passwordController.text;
 
       try {
         final response = await http.post(
           Uri.parse('http://127.0.0.1:8080/api/auth/register'),
-          headers: <String, String>{
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          body: jsonEncode(<String, dynamic>{
-            'email': email,
+          headers: {'Content-Type': 'application/json; charset=UTF-8'},
+          body: jsonEncode({
+            'username': username,
             'password': password,
+            'roles': ['USER']
           }),
         );
 
@@ -40,7 +61,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Registro exitoso')),
           );
-          Navigator.pop(context); // Volver a la pantalla de inicio de sesión
+          Navigator.pop(context);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error en el registro')),
@@ -57,37 +78,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200], // Fondo gris claro
+      backgroundColor: Colors.grey[200],
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Container(
-            width: 300, // Ancho del contenedor
-            height: 300, // Alto del contenedor (ajustado para ser más cuadrado)
+            width: 300,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(10.0), // Bordes redondeados
+              borderRadius: BorderRadius.circular(10.0),
             ),
             padding: EdgeInsets.all(20.0),
             child: Form(
               key: _formKey,
               child: Column(
-                mainAxisSize: MainAxisSize.min, // Ajusta el tamaño al contenido
+                mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   TextFormField(
                     controller: _emailController,
                     decoration: InputDecoration(
                       labelText: 'Correo electrónico',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0), // Bordes redondeados
+                        borderRadius: BorderRadius.circular(8.0),
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, introduce tu correo electrónico';
-                      }
-                      return null;
-                    },
+                    validator: _validateEmail,
                   ),
                   SizedBox(height: 16.0),
                   TextFormField(
@@ -95,7 +110,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     decoration: InputDecoration(
                       labelText: 'Contraseña',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0), // Bordes redondeados
+                        borderRadius: BorderRadius.circular(8.0),
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -105,20 +120,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     obscureText: _obscurePassword,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, introduce tu contraseña';
-                      }
-                      return null;
-                    },
+                    validator: _validatePassword,
                   ),
                   SizedBox(height: 24.0),
                   ElevatedButton(
                     onPressed: _register,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue, // Color del botón
+                      backgroundColor: Colors.blue,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0), // Bordes redondeados
+                        borderRadius: BorderRadius.circular(8.0),
                       ),
                     ),
                     child: Text('Registrarse', style: TextStyle(color: Colors.white)),
@@ -126,7 +136,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   SizedBox(height: 16.0),
                   TextButton(
                     onPressed: () {
-                      Navigator.pop(context); // Volver a la pantalla de inicio de sesión
+                      Navigator.pop(context);
                     },
                     child: Text('¿Ya tienes una cuenta? Inicia sesión', style: TextStyle(color: Colors.blue)),
                   ),
