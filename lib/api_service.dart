@@ -74,4 +74,6 @@ class ApiService {
       throw Exception('Error al eliminar la tarea');
     }
   }
+
+  static void setToken(String s) {}
 }

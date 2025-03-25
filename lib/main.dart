@@ -2,30 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'api_service.dart';
 
-void main() async {
-  await dotenv.load(fileName: ".env"); // Cargar variables de entorno
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ToDo List App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'ToDo List'),
-    );
-  }
-}
-
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  const MyHomePage({super.key, required this.title, this.token});
 
   final String title;
+  final String? token;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -37,10 +18,12 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    if (widget.token != null) {
+      ApiService.setToken(widget.token!);
+    }
     _loadTasks();
   }
 
-  // Cargar tareas desde la API
   Future<void> _loadTasks() async {
     try {
       final tasksFromApi = await ApiService.getTasks();
@@ -54,7 +37,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  // Navegar a la pantalla de tarea
   void _navigateToTaskScreen({int? index}) async {
     final result = await Navigator.push(
       context,
@@ -68,13 +50,11 @@ class _MyHomePageState extends State<MyHomePage> {
     if (result != null) {
       try {
         if (index != null) {
-          // Actualizar tarea existente
           await ApiService.updateTask(tasks[index]['id'], result);
         } else {
-          // Crear nueva tarea
           await ApiService.createTask(result);
         }
-        _loadTasks(); // Recargar tareas
+        _loadTasks();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
@@ -83,11 +63,10 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  // Eliminar una tarea
   void _deleteTask(int index) async {
     try {
       await ApiService.deleteTask(tasks[index]['id']);
-      _loadTasks(); // Recargar tareas
+      _loadTasks();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -95,14 +74,13 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  // Marcar una tarea como completada
   void _toggleTaskCompletion(int index) async {
     try {
       await ApiService.toggleTaskCompletion(
         tasks[index]['id'],
         !tasks[index]['completada'],
       );
-      _loadTasks(); // Recargar tareas
+      _loadTasks();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -146,7 +124,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   IconButton(
                     icon: const Icon(Icons.edit),
                     onPressed: () {
-                      _navigateToTaskScreen(index: index); // Editar tarea
+                      _navigateToTaskScreen(index: index);
                     },
                   ),
                   IconButton(
@@ -173,7 +151,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          _navigateToTaskScreen(); // Agregar nueva tarea
+          _navigateToTaskScreen();
         },
         tooltip: 'Agregar tarea',
         child: const Icon(Icons.add),
@@ -182,7 +160,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-// Pantalla para agregar/editar tareas
 class TaskScreen extends StatefulWidget {
   final Map<String, dynamic>? task;
 
@@ -231,7 +208,7 @@ class _TaskScreenState extends State<TaskScreen> {
                 labelText: 'Descripción',
                 hintText: 'Ingresa la descripción de la tarea',
               ),
-              maxLines: null, // TextArea de múltiples líneas
+              maxLines: null,
               keyboardType: TextInputType.multiline,
             ),
             CheckboxListTile(
