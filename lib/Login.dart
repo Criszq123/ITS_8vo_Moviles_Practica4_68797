@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -60,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
             'username': username,
             'password': password,
           }),
-        );
+        ).timeout(Duration(seconds: 5)); // Agregar un timeout
 
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseData = json.decode(response.body);
@@ -70,14 +72,29 @@ class _LoginScreenState extends State<LoginScreen> {
             context,
             MaterialPageRoute(builder: (context) => MyHomePage(title: 'ToDo List', token: token)),
           );
-        } else {
+        } else if (response.statusCode == 401) {
+          // Manejar credenciales incorrectas
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error en el inicio de sesión')),
+            SnackBar(content: Text('Correo o contraseña incorrectos')),
+          );
+        } else {
+          // Manejar otros errores de la API
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error en el inicio de sesión: ${response.body}')),
           );
         }
-      } catch (e) {
+      } on TimeoutException {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error de conexión')),
+          SnackBar(content: Text('Tiempo de espera agotado')),
+        );
+      } on SocketException {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo conectar al servidor')),
+        );
+      } catch (e) {
+        // Manejar otros errores
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error de conexión: $e')),
         );
       }
     }
