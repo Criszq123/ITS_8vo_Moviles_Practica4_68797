@@ -1,10 +1,8 @@
-import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'main.dart'; // Importa MyHomePage y TaskScreen
-import "Register.dart"; // Importa RegisterScreen
+import 'package:shared_preferences/shared_preferences.dart';
+import 'main.dart'; // Asegúrate de tener tu pantalla principal (MyHomePage o similar)
+import "Register.dart"; // Asegúrate de tener tu pantalla de registro (RegisterScreen)
+import 'api_service.dart'; // Asegúrate de tener tu servicio de API
 
 void main() {
   runApp(const MyApp());
@@ -15,8 +13,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: LoginScreen(), // LoginScreen como pantalla principal
+    return MaterialApp(
+      home: const LoginScreen(), // LoginScreen como pantalla principal
+      routes: {
+        '/home': (context) => const MyHomePage(title: 'Home'), // Reemplaza MyHomePage con tu pantalla principal
+        '/register': (context) => const RegisterScreen(), // Reemplaza RegisterScreen con tu pantalla de registro
+      },
     );
   }
 }
@@ -29,14 +31,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false; // Estado de carga
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -47,56 +49,34 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _submitForm() async {
-    if (_formKey.currentState!.validate()) {
-      String username = _usernameController.text;
-      String password = _passwordController.text;
+  void _login() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Por favor, introduce correo y contraseña")),
+      );
+      return;
+    }
 
-      try {
-        final response = await http.post(
-          Uri.parse('http://127.0.0.1:8080/api/auth/login'),
-          headers: <String, String>{
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          body: jsonEncode(<String, String>{
-            'username': username,
-            'password': password,
-          }),
-        ).timeout(Duration(seconds: 5)); // Agregar un timeout
+    setState(() {
+      _isLoading = true;
+    });
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseData = json.decode(response.body);
-          final String token = responseData['token'];
+    final String username = _emailController.text;
+    final String password = _passwordController.text;
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => MyHomePage(title: 'ToDo List', token: token)),
-          );
-        } else if (response.statusCode == 401) {
-          // Manejar credenciales incorrectas
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Correo o contraseña incorrectos')),
-          );
-        } else {
-          // Manejar otros errores de la API
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error en el inicio de sesión: ${response.body}')),
-          );
-        }
-      } on TimeoutException {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tiempo de espera agotado')),
-        );
-      } on SocketException {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo conectar al servidor')),
-        );
-      } catch (e) {
-        // Manejar otros errores
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error de conexión: $e')),
-        );
-      }
+    try {
+      final token = await ApiService.loginUser(username, password);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', token);
+      Navigator.pushReplacementNamed(context, '/home'); // Navega a la ruta '/home'
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Usuario o Contraseña incorrectas")),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -109,88 +89,68 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Container(
             width: 300, // Ancho del contenedor
-            height: 350, // Alto del contenedor (ajustado para ser más cuadrado)
+            height: 370, // Alto del contenedor (ajustado para el indicador de carga)
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10.0), // Bordes redondeados
             ),
-            padding: EdgeInsets.all(20.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  TextFormField(
-                    controller: _usernameController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: 'Email address',
-                      hintText: 'Introduce tu correo',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email address',
+                    hintText: 'Introduce tu correo',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.0),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, introduce tu correo';
-                      }
-                      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                      if (!emailRegex.hasMatch(value)) {
-                        return 'Introduce un correo válido';
-                      }
-                      return null;
-                    },
                   ),
-                  SizedBox(height: 16.0),
-                  TextFormField(
-                    controller: _passwordController,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      hintText: 'Introduce tu contraseña',
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        ),
-                        onPressed: _togglePasswordVisibility,
+                ),
+                const SizedBox(height: 16.0),
+                TextFormField(
+                  controller: _passwordController,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    hintText: 'Introduce tu contraseña',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
+                      onPressed: _togglePasswordVisibility,
                     ),
-                    obscureText: _obscurePassword,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, introduce tu contraseña';
-                      }
-                      return null;
-                    },
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                  ),
-                  SizedBox(height: 24.0),
-                  ElevatedButton(
-                    onPressed: _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.0),
                     ),
-                    child: const Text('Iniciar Sesion', style: TextStyle(color: Colors.white)),
                   ),
-                  SizedBox(height: 16.0),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => RegisterScreen()),
-                      );
-                    },
-                    child: Text('¿No tienes una cuenta? Regístrate', style: TextStyle(color: Colors.blue)),
-                  )
-                ],
-              ),
+                  obscureText: _obscurePassword,
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                ),
+                const SizedBox(height: 24.0),
+                _isLoading
+                    ? const CircularProgressIndicator()
+                    : ElevatedButton(
+                  onPressed: _login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                  ),
+                  child: const Text('Iniciar Sesion', style: TextStyle(color: Colors.white)),
+                ),
+                const SizedBox(height: 16.0),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/register'); // Navega a la ruta '/register'
+                  },
+                  child: const Text('¿No tienes una cuenta? Regístrate', style: TextStyle(color: Colors.blue)),
+                )
+              ],
             ),
           ),
         ),

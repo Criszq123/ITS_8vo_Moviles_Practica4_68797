@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'api_service.dart';
-import "package:todo_flutter/Login.dart";
+import 'login.dart';
+import 'register.dart';
 
 void main() async {
-  await dotenv.load(fileName: ".env"); // Cargar variables de entorno
+  await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 
@@ -16,22 +17,23 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'ToDo List App',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
       ),
-      home: const MyHomePage(title: 'ToDo List', token: '',),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LoginScreen(),
+        '/home': (context) => const MyHomePage(title: 'ToDo List'),
+        '/register': (context) => RegisterScreen(),
+      },
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  final String title;
-  final String token; // <-- Agregas esta variable
 
-  const MyHomePage({
-    super.key,
-    required this.title,
-    required this.token, // <-- Y la incluyes como parámetro requerido
-  });
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+
+  final String title;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -116,12 +118,25 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  void _logout() async {
+    await ApiService.logout();
+    Navigator.pushReplacementNamed(context, '/');
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Cerrar sesión',
+          ),
+        ],
       ),
       body: tasks.isEmpty
           ? const Center(

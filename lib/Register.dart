@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'dart:core';
+import 'api_service.dart'; // Asegúrate de tener este archivo
 
 class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
   @override
   _RegisterScreenState createState() => _RegisterScreenState();
 }
@@ -12,6 +13,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false; // Estado de carga
 
   void _togglePasswordVisibility() {
     setState(() {
@@ -23,7 +25,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (value == null || value.isEmpty) {
       return 'Por favor, introduce tu correo electrónico';
     }
-    // Expresión regular para validar un correo electrónico
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
     if (!emailRegex.hasMatch(value)) {
       return 'Introduce un correo válido';
@@ -43,34 +44,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() async {
     if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true; // Inicia el estado de carga
+      });
+
       final email = _emailController.text;
       final password = _passwordController.text;
 
+      final userData = {
+        'username': email,
+        'password': password,
+        'roles': ['USER']
+      };
+
       try {
-        final response = await http.post(
-          Uri.parse('http://127.0.0.1:8080/api/auth/register'),
-          headers: {'Content-Type': 'application/json; charset=UTF-8'},
-          body: jsonEncode({
-            'username': email,
-            'password': password,
-            'roles': ['USER']
-          }),
-        );
+        final response = await ApiService.registerUser(userData);
 
         if (response.statusCode == 201) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Registro exitoso')),
+            const SnackBar(content: Text('Registro exitoso')),
           );
-          Navigator.pop(context);
+          Navigator.pushReplacementNamed(context, '/home'); // Navega a la ruta '/home'
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error en el registro')),
+            const SnackBar(content: Text('Error en el registro')),
           );
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error de conexión')),
+          SnackBar(content: Text('Error de conexión: $e')),
         );
+      } finally {
+        setState(() {
+          _isLoading = false; // Finaliza el estado de carga
+        });
       }
     }
   }
@@ -88,7 +95,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(10.0),
             ),
-            padding: EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(20.0),
             child: Form(
               key: _formKey,
               child: Column(
@@ -104,7 +111,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     validator: _validateEmail,
                   ),
-                  SizedBox(height: 16.0),
+                  const SizedBox(height: 16.0),
                   TextFormField(
                     controller: _passwordController,
                     decoration: InputDecoration(
@@ -122,8 +129,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     obscureText: _obscurePassword,
                     validator: _validatePassword,
                   ),
-                  SizedBox(height: 24.0),
-                  ElevatedButton(
+                  const SizedBox(height: 24.0),
+                  _isLoading
+                      ? const CircularProgressIndicator() // Muestra el indicador de carga
+                      : ElevatedButton(
                     onPressed: _register,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
@@ -131,14 +140,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                     ),
-                    child: Text('Registrarse', style: TextStyle(color: Colors.white)),
+                    child: const Text('Registrarse', style: TextStyle(color: Colors.white)),
                   ),
-                  SizedBox(height: 16.0),
+                  const SizedBox(height: 16.0),
                   TextButton(
                     onPressed: () {
                       Navigator.pop(context);
                     },
-                    child: Text('¿Ya tienes una cuenta? Inicia sesión', style: TextStyle(color: Colors.blue)),
+                    child: const Text('¿Ya tienes una cuenta? Inicia sesión', style: TextStyle(color: Colors.blue)),
                   ),
                 ],
               ),
@@ -148,4 +157,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+}
+
+extension on Map<String, dynamic> {
+  get statusCode => null;
 }
